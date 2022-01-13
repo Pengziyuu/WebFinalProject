@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game?</title>
+    <!-- font awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- bootstrap.css -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css"
+        integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
+    <!-- basic.css -->
+    <link rel="stylesheet" href="./stylesheets/basic.css">
+    <!-- style.css -->
+    <link rel="stylesheet" href="./stylesheets/style.css">
+    <meta charset="UTF-8">
+    <title></title>
+    <style type="text/css">
+        #tetris {
+            margin: 10px 250px;
+        }
+    </style>
+    <link href="style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body onload="wait()">
+    <!-- navbar -->
+    <nav id="navbar" class="navbar navbar-expand-sm navbar-light bg-light fixed-top">
+        <a class="navbar-brand" href="./index.html">Final Assignment</a>
+        <button class="navbar-toggler d-lg-none" type="button" data-toggle="collapse" data-target="#collapsibleNavId"
+            aria-controls="collapsibleNavId" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="collapsibleNavId">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="./index.html">首頁</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <!-- navbar end -->
+
+    <!-- header -->
+    <header id="homeHeader" class="jumbotron">
+        <div class="container">
+            <h1 class="display-4">Chat Page</h1>
+        </div>
+    </header>
+    <!-- header end -->
+
+
+
+    <div id="text" style='color: rgb(12, 7, 7);font-size: 30px;'>Score：0</div>
+    <canvas width="350" height="700" id="tetris"></canvas>
+    <input type="button" onclick="start()" value="開始" style="width:50px;height:50px;">
+    <input type="button" onclick="left()" value="向左" style="width:50px;height:50px;">
+    <input type="button" onclick="tetrisObj.down_speed_up()" value="向下" style="width:50px;height:50px;">
+    <input type="button" onclick="right()" value="向右" style="width:50px;height:50px;">
+    <input type="button" onclick="turn()" value="旋轉" style="width:50px;height:50px;">
+    <input type="button" onclick="restart()" value="重置" style="background-color:red;width:80px;height:50px;">
+
+    <script type="text/javascript">
+        function wait() {
+            tetrisObj.initBackground()
+        }
+        function start() {
+            tetrisObj.init()
+            tetrisObj.run()
+        }
+        function left() {
+            tetrisObj.initBackground()
+            tetrisObj.move(-1)
+            tetrisObj.drawBlock(tetrisObj.type_color)
+        }
+        function right() {
+            tetrisObj.initBackground()
+            tetrisObj.move(1)
+            tetrisObj.drawBlock(tetrisObj.type_color)
+        }
+        function turn() {
+            tetrisObj.initBackground()        //重畫地圖
+            tetrisObj.up_change_direction(tetrisObj.num_blcok)
+            tetrisObj.drawBlock(tetrisObj.type_color)
+        }
+        function restart() {
+            window.location.reload()
+        }
+        class tetris {
+            constructor(side = 35, width = 10, height = 20, speed = 400) {
+                this.side = side            // 方塊邊長
+                this.width = width            // 一行包含的方塊數
+                this.height = height        // 一列包含的方塊數
+                this.speed = speed             // 移動速度
+                this.num_blcok                // 當前方塊的變量
+                this.type_color                // 當前顏色
+                this.ident                    // setInterval
+                this.direction = 1            // 方向,初始化1    
+                this.grade = 0                // 分數
+                this.over = false            // 結束
+                this.arr_bX = []            // 當前x座標
+                this.arr_bY = []            // 當前y座標
+                this.arr_store_X = []        // 存放到達底部所有方塊的X坐標
+                this.arr_store_Y = []        // 存放到達底部所有方塊的y坐標
+                this.arr_store_color = []    // 存放到達底部所有方塊的顏色
+                this.paints = document.getElementById('tetris').getContext('2d')
+                //畫筆
+                self = this
+            }
+            // 封裝paints方法
+            paintfr(x, y, scale = 1) {
+                this.paints.fillRect(x * this.side, y * this.side, scale * this.side, scale * this.side)
+            }
+
+            // 遊戲開始
+            // gameStart() {
+            //     this.init()
+            //     this.run()
+            // }
+
+            // 初始化工作
+            init() {
+                this.initBackground()
+                this.initBlock()
+            }
+
+            // 方塊自動下落
+            run() {
+                this.ident = setInterval("self.down_speed_up()", this.speed)
+            }
+
+            // 初始化地圖
+            initBackground() {
+                this.paints.beginPath()
+                this.paints.fillStyle = '#000000'        //地圖填充顏色為黑色
+                for (let i = 0; i < this.height; i++) {
+                    for (let j = 0; j < this.width; j++) {
+                        this.paintfr(j, i)
+                    }
+                }
+                this.paints.closePath()
+            }
+
+            // 初始化方塊的位置和顏色
+            initBlock() {
+                this.paints.beginPath()
+                this.createRandom('rColor')        //生成顏色字符串，
+                this.paints.fillStyle = this.type_color
+                this.createRandom('rBlock')        //生成方塊類型數字
+                this.arr_bX.forEach((item, index) => {
+                    this.paintfr(item, this.arr_bY[index], 0.9)
+                })
+                this.paints.closePath()
+            }
+
+            initBlock1(i) {
+                this.paints.beginPath()
+                this.createRandom('rColor')        //生成顏色字符串，
+                this.paints.fillStyle = this.type_color
+                this.createRandom1(i)        //生成方塊類型數字
+                this.arr_bX.forEach((item, index) => {
+                    this.paintfr(item, this.arr_bY[index], 0.9)
+                })
+                this.paints.closePath()
+            }
+
+            createRandom1(i) {
+                let temp = this.width / 2 - 1
+                switch (i) {
+                    case 0:
+                        this.arr_bX.push(temp, temp, temp, temp, temp + 1, temp + 2, temp + 3, temp + 3, temp + 3, temp + 3)
+                        this.arr_bY.push(0, 1, 2, 3, 1, 2, 0, 1, 2, 3)
+                        break
+                    case 1:
+                        this.arr_bX.push(temp, temp - 1, temp, temp + 1)
+                        this.arr_bY.push(1, 0, 0, 0)
+                        break
+                    case 2:
+                        this.arr_bX.push(temp, temp, temp, temp + 1, temp + 2, temp + 2, temp + 2)
+                        this.arr_bY.push(0, 1, 2, 2, 0, 1, 2)
+                        break
+                    case 3:
+                        this.arr_bX.push(temp, temp - 1, temp, temp + 1)
+                        this.arr_bY.push(0, 1, 1, 1)
+                        break
+                }
+            }
+            // 利用陣列畫方塊
+            drawBlock(color) {
+                this.paints.beginPath()
+                this.paints.fillStyle = color
+                this.arr_bX.forEach((item, index) => {
+                    this.paintfr(item, this.arr_bY[index], 0.9)
+                })
+                this.paints.closePath()
+            }
+
+            //畫已經在定位好的方塊
+            drawStaticBlock() {
+                // this.arr_store_X.forEach((item, index) => {
+                //     this.paints.beginPath()
+                //     this.paints.fillStyle = this.arr_store_color[index]
+                //     this.paintfr(item, this.arr_store_Y[index], 0.9)
+                //     this.paints.closePath()
+                // })
+            }
+
+            // 生成隨機數返回方塊類型或顏色類型
+            createRandom(type) {
+                let temp = this.width / 2 - 1
+
+                if (type == 'rBlock') {         //如果是方塊類型
+                    this.num_blcok = Math.round(Math.random() * 6 + 1)
+                    switch (this.num_blcok) {
+                        case 1:
+                            this.arr_bX.push(temp, temp - 1, temp, temp + 1)
+                            this.arr_bY.push(1, 0, 0, 0)
+                            break
+                        case 2:
+                            this.arr_bX.push(temp, temp - 1, temp - 1, temp + 1)
+                            this.arr_bY.push(1, 0, 1, 1)
+                            break
+                        case 3:
+                            this.arr_bX.push(temp, temp - 1, temp + 1, temp + 2)
+                            this.arr_bY.push(0, 0, 0, 0)
+                            break
+                        case 4:
+                            this.arr_bX.push(temp, temp - 1, temp, temp + 1)
+                            this.arr_bY.push(0, 0, 1, 1)
+                            break
+                        case 5:
+                            this.arr_bX.push(temp, temp + 1, temp, temp + 1)
+                            this.arr_bY.push(0, 0, 1, 1)
+                            break
+                        case 6:
+                            this.arr_bX.push(temp + 1, temp, temp, temp, temp + 2, temp + 2, temp + 2)
+                            this.arr_bY.push(2, 0, 1, 2, 0, 1, 2)
+                            break
+                        case 7:
+                            this.arr_bX.push(temp, temp, temp, temp, temp + 1, temp + 2, temp + 3, temp + 3, temp + 3, temp + 3)
+                            this.arr_bY.push(0, 1, 2, 3, 1, 2, 0, 1, 2, 3)
+                            break
+                    }
+                }
+                if (type == 'rColor') {                         //如果是顏色類型
+                    let num_color = Math.round(Math.random() * 8 + 1)
+
+                    switch (num_color) {
+                        case 1:
+                            this.type_color = '#3EF72A'
+                            break
+                        case 2:
+                            this.type_color = 'yellow'
+                            break
+                        case 3:
+                            this.type_color = '#2FE0BF'
+                            break
+                        case 4:
+                            this.type_color = 'red'
+                            break
+                        case 5:
+                            this.type_color = 'gray'
+                            break
+                        case 6:
+                            this.type_color = '#C932C6'
+                            break
+                        case 7:
+                            this.type_color = '#FC751B'
+                            break
+                        case 8:
+                            this.type_color = '#6E6EDD'
+                            break
+                        case 9:
+                            this.type_color = '#F4E9E1'
+                            break
+                    }
+                }
+            }
+
+            // 判斷方塊之間是否碰撞(下)，以及變形時是否越過下邊界
+            judgeCollision_down() {
+                for (let i = 0; i < this.arr_bX.length; i++) {
+                    if (this.arr_bY[i] + 1 == this.height) { //變形時是否越過下邊界
+                        return false
+                    }
+                    if (this.arr_store_X.length != 0) {    //判斷方塊之間是否碰撞(下)
+                        for (let j = 0; j < this.arr_store_X.length; j++) {
+                            if (this.arr_bX[i] == this.arr_store_X[j]) {
+                                if (this.arr_bY[i] + 1 == this.arr_store_Y[j]) {
+                                    return false
+                                }
+                            }
+
+                        }
+                    }
+                }
+                return true
+            }
+
+            //判斷方塊之間是否碰撞(左右)，以及變形時是否越過左右邊界
+            judgeCollision_other(num) {
+                for (let i = 0; i < this.arr_bX.length; i++) {
+                    if (num == 1) {            //變形時是否越過右邊界
+                        if (this.arr_bX[i] == this.width - 1)
+                            return false
+                    }
+                    if (num == -1) {                //變形時是否越過左邊界
+                        if (this.arr_bX[i] == 0)
+                            return false
+                    }
+                    if (this.arr_store_X.length != 0) {                    //判斷方塊之間是否碰撞(左右)
+                        for (let j = 0; j < this.arr_store_X.length; j++) {
+                            if (this.arr_bY[i] == this.arr_store_Y[j]) {
+                                if (this.arr_bX[i] + num == this.arr_store_X[j]) {
+                                    return false
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+
+            //方向鍵為下的加速函數
+            down_speed_up() {
+                let flag_all_down = true
+                flag_all_down = this.judgeCollision_down()
+                let i = 2;
+
+                if (flag_all_down) {
+                    this.initBackground()
+                    for (let i = 0; i < this.arr_bY.length; i++) {
+                        this.arr_bY[i] = this.arr_bY[i] + 1
+                    }
+                }
+                else {
+                    for (let i = 0; i < this.arr_bX.length; i++) {
+                        // this.arr_store_X.push(this.arr_bX[i])
+                        // this.arr_store_Y.push(this.arr_bY[i])
+                        // this.arr_store_color.push(this.type_color)
+                    }
+
+                    this.arr_bX.splice(0, this.arr_bX.length)
+                    this.arr_bY.splice(0, this.arr_bY.length)
+                    if (i < 4) {
+                        this.initBlock();
+                        i++;
+                    }
+                    else {
+                        this.initBlock();
+                    }
+                }
+                this.clearUnderBlock()
+                this.drawBlock(this.type_color)
+                this.drawStaticBlock()
+                this.gameover()
+            }
+
+            //方向鍵为為左右的左移函數
+            move(dir_temp) {
+                this.initBackground()
+
+                if (dir_temp == 1) {                    //右
+                    let flag_all_right = true
+                    flag_all_right = this.judgeCollision_other(1)
+
+                    if (flag_all_right) {
+                        for (let i = 0; i < this.arr_bY.length; i++) {
+                            this.arr_bX[i] = this.arr_bX[i] + 1
+                        }
+                    }
+                }
+                else {
+                    let flag_all_left = true
+                    flag_all_left = this.judgeCollision_other(-1)
+
+                    if (flag_all_left) {
+                        for (let i = 0; i < this.arr_bY.length; i++) {
+                            this.arr_bX[i] = this.arr_bX[i] - 1
+                        }
+                    }
+                }
+                this.drawBlock(this.type_color)
+                this.drawStaticBlock()
+            }
+
+            //方向鍵為空格的變換方向函數
+            up_change_direction(num_blcok) {
+                if (num_blcok == 5) {
+                    return
+                }
+
+                let arr_tempX = []
+                let arr_tempY = []
+                //因為不知道是否能夠變形成功，所以先存起来
+                for (let i = 0; i < this.arr_bX.length; i++) {
+                    arr_tempX.push(this.arr_bX[i])
+                    arr_tempY.push(this.arr_bY[i])
+                }
+                this.direction++
+                //中心坐標提取出来，變形都以當前中心为準
+                let ax_temp = this.arr_bX[0]
+                let ay_temp = this.arr_bY[0]
+
+                this.arr_bX.splice(0, this.arr_bX.length)            //陣列清空 
+                this.arr_bY.splice(0, this.arr_bY.length)
+
+                if (num_blcok == 1) {
+
+                    switch (this.direction % 4) {
+                        case 1:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp + 1, ay_temp + 1, ay_temp + 1)
+                            break
+                        case 2:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp, ax_temp)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp - 1, ay_temp + 1)
+                            break
+                        case 3:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp + 1, ay_temp)
+                            break
+                        case 0:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp + 1, ay_temp)
+                            break
+                    }
+                }
+                if (num_blcok == 2) {
+
+                    switch (this.direction % 4) {
+                        case 1:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp - 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp - 1, ay_temp)
+                            break
+                        case 2:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp - 1)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp + 1, ay_temp + 1)
+                            break
+                        case 3:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp + 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp, ay_temp + 1)
+                            break
+                        case 0:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp + 1, ay_temp - 1)
+                            break
+                    }
+                }
+                if (num_blcok == 3) {
+
+                    switch (this.direction % 4) {
+                        case 1:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp + 1, ax_temp + 2)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp, ay_temp)
+                            break
+                        case 2:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp + 1, ay_temp + 2)
+                            break
+                        case 3:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp + 1, ax_temp + 2)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp, ay_temp)
+                            break
+                        case 0:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp + 1, ay_temp + 2)
+                            break
+                    }
+                }
+                if (num_blcok == 4) {
+
+                    switch (this.direction % 4) {
+                        case 1:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp + 1, ay_temp + 1)
+                            break
+                        case 2:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp + 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp + 1, ay_temp, ay_temp - 1)
+                            break
+                        case 3:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp - 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp, ay_temp - 1)
+                            break
+                        case 0:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp + 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp, ay_temp + 1)
+                            break
+                    }
+                }
+
+                if (num_blcok == 6) {
+
+                    switch (this.direction % 4) {
+                        case 0:
+                            this.arr_bX.push(ax_temp - 1, ax_temp - 1, ax_temp, ax_temp + 1, ax_temp - 1, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp + 1, ay_temp + 1, ay_temp + 1, ay_temp - 1, ay_temp - 1, ay_temp - 1)
+                            break
+                        case 1:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp - 1, ax_temp - 1, ax_temp + 1, ax_temp + 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp + 1, ay_temp + 1, ay_temp, ay_temp - 1, ay_temp + 1, ay_temp, ay_temp - 1)
+                            break
+                        case 2:
+                            this.arr_bX.push(ax_temp + 1, ax_temp - 1, ax_temp, ax_temp + 1, ax_temp - 1, ax_temp, ax_temp + 1)
+                            this.arr_bY.push(ay_temp, ay_temp + 1, ay_temp + 1, ay_temp + 1, ay_temp - 1, ay_temp - 1, ay_temp - 1)
+                            break
+                        case 3:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp - 1, ax_temp - 1, ax_temp + 1, ax_temp + 1, ax_temp + 1)
+                            this.arr_bY.push(ay_temp - 1, ay_temp + 1, ay_temp, ay_temp - 1, ay_temp + 1, ay_temp, ay_temp - 1)
+                            break
+                    }
+                }
+
+                if (num_blcok == 7) {
+
+                    switch (this.direction % 4) {
+                        case 0:
+                            this.arr_bX.push(ax_temp, ax_temp - 1, ax_temp - 2, ax_temp - 3, ax_temp - 1, ax_temp - 2, ax_temp, ax_temp - 1, ax_temp - 2, ax_temp - 3)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp, ay_temp, ay_temp - 1, ay_temp - 2, ay_temp - 3, ay_temp - 3, ay_temp - 3, ay_temp - 3)
+                            break
+                        case 1:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp, ax_temp - 1, ax_temp - 2, ax_temp - 3, ax_temp - 3, ax_temp - 3, ax_temp - 3)
+                            this.arr_bY.push(ay_temp, ay_temp + 1, ay_temp + 2, ay_temp + 3, ay_temp + 1, ay_temp + 2, ay_temp, ay_temp + 1, ay_temp + 2, ay_temp + 3)
+                            break
+                        case 2:
+                            this.arr_bX.push(ax_temp, ax_temp + 1, ax_temp + 2, ax_temp + 3, ax_temp + 1, ax_temp + 2, ax_temp, ax_temp + 1, ax_temp + 2, ax_temp + 3)
+                            this.arr_bY.push(ay_temp, ay_temp, ay_temp, ay_temp, ay_temp + 1, ay_temp + 2, ay_temp + 3, ay_temp + 3, ay_temp + 3, ay_temp + 3)
+                            break
+                        case 3:
+                            this.arr_bX.push(ax_temp, ax_temp, ax_temp, ax_temp, ax_temp + 1, ax_temp + 2, ax_temp + 3, ax_temp + 3, ax_temp + 3, ax_temp + 3)
+                            this.arr_bY.push(ay_temp, ay_temp - 1, ay_temp - 2, ay_temp - 3, ay_temp - 1, ay_temp - 2, ay_temp, ay_temp - 1, ay_temp - 2, ay_temp - 3)
+                            break
+                    }
+                }
+
+                if (!(this.judgeCollision_other(-1) && this.judgeCollision_down() && this.judgeCollision_other(1))) {            //如果变形不成功则执行下面代码
+                    this.arr_bX.splice(0, this.arr_bX.length)
+                    this.arr_bY.splice(0, this.arr_bY.length)
+                    for (let i = 0; i < arr_tempX.length; i++) {
+                        this.arr_bX.push(arr_tempX[i])
+                        this.arr_bY.push(arr_tempY[i])
+                    }
+                }
+                this.drawStaticBlock()
+            }
+
+            //一行滿了清空方塊，上面方塊Y坐標+1
+            clearUnderBlock() {
+                //刪除低層方塊
+                let arr_row = []
+                let line_num
+                if (this.arr_store_X.length != 0) {
+                    for (let j = this.height - 1; j >= 0; j--) {
+                        for (let i = 0; i < this.arr_store_color.length; i++) {
+                            if (this.arr_store_Y[i] == j) {
+                                arr_row.push(i)
+                            }
+                        }
+                        if (arr_row.length == this.width) {
+                            line_num = j
+                            break
+                        } else {
+                            arr_row.splice(0, arr_row.length)
+                        }
+                    }
+                }
+
+                if (this.judgeCollision_down() == 0) {
+                    //計算grade
+                    this.grade++
+
+                    document.getElementById('text').innerHTML = 'Score：' + this.grade
+                    for (let i = 0; i < arr_row.length; i++) {
+                        this.arr_store_X.splice(arr_row[i] - i, 1)
+                        this.arr_store_Y.splice(arr_row[i] - i, 1)
+                        this.arr_store_color.splice(arr_row[i] - i, 1)
+                    }
+
+                    //讓面的方塊往下掉一格
+                    for (let i = 0; i < this.arr_store_color.length; i++) {
+                        if (this.arr_store_Y[i] < line_num) {
+                            this.arr_store_Y[i] = this.arr_store_Y[i] + 1
+                        }
+                    }
+                }
+            }
+
+            //判斷遊戲结束
+            gameover() {
+                for (let i = 0; i < this.arr_store_X.length; i++) {
+                    if (this.arr_store_Y[i] == 0) {
+                        clearInterval(this.ident)
+                        this.over = true
+                    }
+                }
+            }
+        }
+
+        let tetrisObj = new tetris()
+
+        //方向键功能函數
+        document.onkeydown = (e) => {
+            if (tetrisObj.over)
+                return
+
+            switch (e.keyCode) {
+                case 40:  // 方向下
+                    tetrisObj.down_speed_up()
+                    break
+                case 32:  // 空格換方向
+                    tetrisObj.initBackground()        //重畫地圖
+                    tetrisObj.up_change_direction(tetrisObj.num_blcok)
+                    tetrisObj.drawBlock(tetrisObj.type_color)
+                    break
+                case 37:  // 方向左
+                    tetrisObj.initBackground()
+                    tetrisObj.move(-1)
+                    tetrisObj.drawBlock(tetrisObj.type_color)
+                    break
+                case 39:  // 方向右
+                    tetrisObj.initBackground()
+                    tetrisObj.move(1)
+                    tetrisObj.drawBlock(tetrisObj.type_color)
+                    break
+            }
+        }
+    </script>
+
+
+
+    <canvas id="canvas" width="400" height="400" style="background-color:#333">
+    </canvas>
+
+    <script>
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        var radius = canvas.height / 2;
+        ctx.translate(radius, radius);
+        radius = radius * 0.90
+        setInterval(drawClock, 1);
+
+        function drawClock() {
+            drawFace(ctx, radius);
+            drawNumbers(ctx, radius);
+            drawScales(ctx, radius);
+            drawTime(ctx, radius);
+        }
+
+        function drawFace(ctx, radius) {
+            var grad;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            grad = ctx.createRadialGradient(0, 0, radius * 0.95, 0, 0, radius * 1.05);
+            grad.addColorStop(0, '#333');
+            grad.addColorStop(0.5, 'white');
+            grad.addColorStop(1, '#333');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = radius * 0.1;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.08, 0, 2 * Math.PI);
+            ctx.fillStyle = '#333';
+            ctx.fill();
+        }
+
+        function drawNumbers(ctx, radius) {
+            var ang;
+            var num;
+            var num1;
+            ctx.font = radius * 0.13 + "px arial";
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "center";
+            for (num = 1; num < 13; num++) {
+                ang = num * Math.PI / 6;
+                if (num == 1) {
+                    num1 = "I";
+                }
+                else if (num == 2) {
+                    num1 = "II";
+                }
+                else if (num == 3) {
+                    num1 = "III";
+                }
+                else if (num == 4) {
+                    num1 = "IV";
+                }
+                else if (num == 5) {
+                    num1 = "V";
+                }
+                else if (num == 6) {
+                    num1 = "VI";
+                }
+                else if (num == 7) {
+                    num1 = "VII";
+                }
+                else if (num == 8) {
+                    num1 = "VIII";
+                }
+                else if (num == 9) {
+                    num1 = "IX";
+                }
+                else if (num == 10) {
+                    num1 = "X";
+                }
+                else if (num == 11) {
+                    num1 = "XI";
+                }
+                else if (num == 12) {
+                    num1 = "XII";
+                }
+                ctx.rotate(ang);
+                ctx.translate(0, -radius * 0.85);
+                ctx.rotate(-ang);
+                ctx.fillText(num1, 0, 0);
+
+                ctx.rotate(ang);
+                ctx.translate(0, radius * 0.85);
+                ctx.rotate(-ang);
+            }
+        }
+
+        function drawScales(ctx, radius) {
+            for (num = 1; num < 61; num++) {
+                ang = num * Math.PI / 30;
+
+                ctx.rotate(ang);
+                ctx.beginPath();
+                ctx.moveTo(0, -165);
+                ctx.lineTo(0, -200);
+                if (num % 5 == 0) {
+                    ctx.lineWidth = 4;
+                }
+                else {
+                    ctx.lineWidth = 2;
+                }
+                ctx.stroke();
+                ctx.rotate(-ang);
+            }
+        }
+        function drawTime(ctx, radius) {
+            var now = new Date();
+            var hour = now.getHours();
+            var minute = now.getMinutes();
+            var second = now.getSeconds();
+            var milliseconds = now.getMilliseconds();
+            ctx.font = "30px Arial";
+            ctx.fillStyle = "#ff0000"
+            ctx.fillText(hour % 12, -50, 70);
+            ctx.fillText(":", -25, 70);
+            ctx.fillText(minute, 0, 70);
+            ctx.fillText(":", 25, 70);
+            ctx.fillText(second, 50, 70);
+            //hour
+            hour = hour % 12;
+
+            hour = (hour * 2 * Math.PI / 12) + (minute * 2 * Math.PI / (12 * 60)) + (second * 2 * Math.PI / (12 * 60 * 60));
+            drawHand(ctx, hour, radius * 0.5, radius * 0.05);
+
+            //minute
+            minute = (minute * 2 * Math.PI / 60) + (second * 2 * Math.PI / (60 * 60));
+            drawHand(ctx, minute, radius * 0.8, radius * 0.05);
+
+            // second
+            second = (second * 2 * Math.PI / 60);
+            drawHand(ctx, second, radius * 0.9, radius * 0.02);
+
+            milliseconds = (milliseconds * 2 * Math.PI / 1000);
+            drawHand(ctx, milliseconds, radius * 0.9, radius * 0.02);
+        }
+
+        function drawHand(ctx, pos, length, width) {
+            ctx.beginPath();
+            ctx.lineWidth = width;
+            ctx.lineCap = "round";
+
+            ctx.moveTo(0, 0);
+            ctx.rotate(pos);
+            ctx.lineTo(-4, -10);
+            ctx.lineTo(0, -length);
+            ctx.lineTo(4, -10);
+            ctx.rotate(-pos);
+            ctx.fill()
+            ctx.stroke();
+        }
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+    <!-- footer -->
+    <footer id="footer" class="text-center mt-4">
+        <p>Bottom &copy; 2022</p>
+    </footer>
+    <!-- footer end -->
+
+    <!-- jquery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+        integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
+        crossorigin="anonymous"></script>
+    <!-- bootstrap.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.min.js"
+        integrity="sha384-VHvPCCyXqtD5DqJeNxl2dtTyhF78xXNXdkwX1CZeRusQfRKp+tA7hAShOK/B/fQ2"
+        crossorigin="anonymous"></script>
+    <!-- moment.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <!--  Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <!--  Firebase Project Config -->
+    <script src="./javascripts/firebase-config.js"></script>
+    <!-- auth.js -->
+    <script src="./javascripts/auth.js"></script>
+    <!-- main.js -->
+    <script src="./javascripts/main.js"></script>
+
+</body>
+
+</html>
